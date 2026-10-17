@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedrinho Franco — Pedro Ivo de Oliveira (1954–2025)</title>
+<meta name="description" content="Memorial de Pedro Ivo de Oliveira, o Pedrinho Franco. 23/03/1954 — 27/12/2025. Seresteiro, pai de cinco filhos, alegria em forma de gente.">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#171310; --bg2:#211b16; --card:#26201a; --txt:#f0e8dd; --muted:#b9ab99;
+    --gold:#d9a441; --gold2:#f2c66d; --line:#3a322a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:Georgia,'Times New Roman',serif;line-height:1.65}
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
+  header{text-align:center;padding:56px 20px 30px;background:radial-gradient(ellipse at top,#2b231b 0%,var(--bg) 70%)}
+  .hero-foto{width:190px;height:190px;border-radius:50%;object-fit:cover;object-position:top;border:4px solid var(--gold);box-shadow:0 0 40px rgba(217,164,65,.25)}
+  h1{font-size:2.1rem;margin-top:22px;letter-spacing:.5px}
+  .apelido{color:var(--gold2);font-style:italic;font-size:1.15rem;margin-top:4px}
+  .datas{color:var(--muted);margin-top:12px;font-size:1.05rem;letter-spacing:1px}
+  .frase{font-style:italic;color:var(--muted);margin-top:18px;font-size:1rem}
+  section{padding:34px 0}
+  h2{color:var(--gold);font-size:1.45rem;text-align:center;margin-bottom:20px}
+  h2::after{content:"";display:block;width:60px;height:2px;background:var(--gold);margin:10px auto 0;opacity:.6}
+  .historia p{margin-bottom:14px;text-align:justify}
+  .galeria .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .galeria img{width:100%;border-radius:10px;border:1px solid var(--line)}
+  .galeria video{width:100%;border-radius:10px;border:1px solid var(--line);margin-top:12px;background:#000}
+  .vela-box{background:var(--card);border:1px solid var(--line);border-radius:14px;text-align:center;padding:34px 20px}
+  .chama-wrap{height:90px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:10px}
+  .vela{position:relative;width:26px;height:52px;background:linear-gradient(#efe6d8,#d8c9b0);border-radius:4px}
+  .pavio{position:absolute;top:-8px;left:50%;width:2px;height:8px;background:#5a4a38;transform:translateX(-50%)}
+  .chama{position:absolute;top:-30px;left:50%;width:18px;height:24px;background:radial-gradient(circle at 50% 80%,#fff7d6 0%,#ffd25e 35%,#ff9d2e 70%,rgba(255,120,20,0) 100%);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;transform:translateX(-50%);animation:trem 1.6s ease-in-out infinite;transform-origin:bottom center;opacity:0;transition:opacity .8s}
+  .acesa .chama{opacity:1}
+  @keyframes trem{0%,100%{transform:translateX(-50%) scale(1) rotate(-1.5deg)}50%{transform:translateX(-50%) scale(1.06) rotate(1.5deg)}}
+  .contador{font-size:1.1rem;color:var(--gold2);margin:8px 0 18px}
+  button{background:var(--gold);color:#241c10;border:none;border-radius:30px;padding:13px 34px;font-size:1.05rem;font-family:inherit;cursor:pointer;font-weight:bold}
+  button:hover{background:var(--gold2)}
+  button:disabled{opacity:.55;cursor:default}
+  form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 20px}
+  label{display:block;color:var(--muted);font-size:.95rem;margin:12px 0 5px}
+  input[type=text],textarea{width:100%;background:#1c1712;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:11px 12px;font-family:inherit;font-size:1rem}
+  textarea{min-height:110px;resize:vertical}
+  .aviso{font-size:.9rem;color:var(--muted);font-style:italic;margin-top:12px;text-align:center}
+  .form-btn{margin-top:18px;width:100%}
+  .hp{position:absolute;left:-9999px}
+  .recado{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:16px 18px;margin-bottom:12px}
+  .recado .quem{color:var(--gold2);font-weight:bold;margin-bottom:4px}
+  .recado .quando{color:var(--muted);font-size:.82rem;margin-top:8px}
+  .vazio{color:var(--muted);text-align:center;font-style:italic}
+  footer{text-align:center;color:var(--muted);font-size:.9rem;padding:34px 20px 50px;border-top:1px solid var(--line);margin-top:20px}
+  .ok-msg{text-align:center;color:var(--gold2);margin-top:14px;display:none}
+  @media(max-width:520px){h1{font-size:1.7rem}.galeria .grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <img class="hero-foto" src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-sorrindo.jpg" alt="Pedrinho Franco sorrindo">
+  <h1>Pedro Ivo de Oliveira</h1>
+  <div class="apelido">"Pedrinho Franco"</div>
+  <div class="datas">23 de março de 1954 &nbsp;✦&nbsp; 27 de dezembro de 2025</div>
+  <div class="frase">Sua alegria e sua música ficam para sempre na nossa memória.</div>
+</header>
+
+<div class="wrap">
+  <section class="historia">
+    <h2>Sua história</h2>
+    <p>Pedro Ivo de Oliveira, conhecido carinhosamente como <strong>Pedrinho Franco</strong>, nasceu em 23 de março de 1954, filho de Luiz Gonzaga Franco e Maria de Lourdes de Oliveira.</p>
+    <p>Alegre por natureza, Pedrinho era daquelas pessoas que faziam amigos por onde passava. Seresteiro por muitos anos, levou a música no peito: tocou e cantou ao lado de Luiz Gonzaga, o Rei do Baião, e correu o mundo com ele.</p>
+    <p>Pai de cinco filhos, deixou saudade em todos que tiveram a sorte de conhecê-lo — e um exemplo de alegria que nenhum tempo apaga.</p>
+  </section>
+
+  <section class="galeria">
+    <h2>Lembranças</h2>
+    <div class="grid">
+      <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-sorrindo.jpg" alt="Pedrinho Franco sorrindo com a camisa do Rei do Baião">
+      <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg" alt="Pedrinho Franco cantando com o microfone">
+    </div>
+    <video controls preload="metadata" poster="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg">
+      <source src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/video-pedrinho.mp4" type="video/mp4">
+      Seu navegador não conseguiu carregar o vídeo.
+    </video>
+  </section>
+
+  <section>
+    <h2>Acenda uma vela</h2>
+    <div class="vela-box">
+      <div class="chama-wrap">
+        <div class="vela" id="vela">
+          <div class="pavio"></div>
+          <div class="chama"></div>
+        </div>
+      </div>
+      <div class="contador" id="contador">…</div>
+      <button id="btn-vela" onclick="acenderVela()">Acender uma vela 🕯️</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Deixe uma mensagem de saudade</h2>
+    <form id="form-recado" onsubmit="enviarRecado(event)">
+      <input class="hp" type="text" id="hp" name="hp" tabindex="-1" autocomplete="off">
+      <label for="nome">Seu nome</label>
+      <input type="text" id="nome" maxlength="80" required placeholder="Como você quer ser identificado(a)">
+      <label for="mensagem">Sua mensagem</label>
+      <textarea id="mensagem" maxlength="600" required placeholder="Escreva aqui sua lembrança, sua saudade, sua homenagem…"></textarea>
+      <button class="form-btn" type="submit" id="btn-recado">Enviar mensagem</button>
+      <div class="ok-msg" id="ok-msg">Mensagem recebida. Ela aparecerá aqui após a aprovação da família. 🙏</div>
+      <div class="aviso">As mensagens passam pela aprovação da família antes de aparecer nesta página.</div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Mensagens de saudade</h2>
+    <div id="recados"><p class="vazio">Carregando mensagens…</p></div>
+  </section>
+</div>
+
+<footer>
+  Feito com carinho pela família. 🕊️<br>
+  Pedro Ivo de Oliveira, o Pedrinho Franco — para sempre em nossos corações.
+</footer>
+
+<script>
+const SUPABASE_URL = "https://ckbvqzfzwglybxyygpof.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_QOmw-zfH6YTxA5TqDIrifA_9TPDhe8o";
+const PESSOA = "pedrinho-franco";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function fmtData(iso){
+  try{ return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}); }
+  catch(e){ return ""; }
+}
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+async function carregarVelas(){
+  const {count, error} = await sb.from('velas').select('*',{count:'exact',head:true}).eq('pessoa',PESSOA);
+  const el = document.getElementById('contador');
+  if(error){ el.textContent = "Seja o primeiro a acender uma vela."; return; }
+  const n = count||0;
+  el.textContent = n===0 ? "Seja o primeiro a acender uma vela."
+    : n===1 ? "1 vela acesa em sua memória."
+    : n+" velas acesas em sua memória.";
+}
+async function acenderVela(){
+  const btn = document.getElementById('btn-vela');
+  btn.disabled = true;
+  const {error} = await sb.from('velas').insert({pessoa:PESSOA});
+  document.getElementById('vela').classList.add('acesa');
+  btn.textContent = "Vela acesa 🕯️";
+  carregarVelas();
+}
+
+async function carregarRecados(){
+  const {data, error} = await sb.from('recados').select('nome,mensagem,created_at')
+    .eq('pessoa',PESSOA).eq('aprovado',true).order('created_at',{ascending:false}).limit(50);
+  const box = document.getElementById('recados');
+  if(error || !data || data.length===0){
+    box.innerHTML = '<p class="vazio">Ainda não há mensagens aprovadas. Deixe a sua acima.</p>';
+    return;
+  }
+  box.innerHTML = data.map(r =>
+    '<div class="recado"><div class="quem">'+esc(r.nome)+'</div><div>'+esc(r.mensagem)+
+    '</div><div class="quando">'+fmtData(r.created_at)+'</div></div>').join('');
+}
+
+async function enviarRecado(ev){
+  ev.preventDefault();
+  if(document.getElementById('hp').value){ return; }
+  const nome = document.getElementById('nome').value.trim();
+  const mensagem = document.getElementById('mensagem').value.trim();
+  if(!nome || !mensagem){ return; }
+  const btn = document.getElementById('btn-recado');
+  btn.disabled = true; btn.textContent = "Enviando…";
+  const {error} = await sb.from('recados').insert({pessoa:PESSOA, nome:nome, mensagem:mensagem});
+  if(error){
+    btn.disabled = false; btn.textContent = "Enviar mensagem";
+    alert("Não foi possível enviar agora. Tente novamente em alguns instantes.");
+    return;
+  }
+  document.getElementById('form-recado').reset();
+  document.getElementById('ok-msg').style.display = 'block';
+  btn.textContent = "Mensagem enviada";
+}
+
+carregarVelas();
+carregarRecados();
+</script>
+</body>
+</html>
