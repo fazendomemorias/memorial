@@ -56,15 +56,15 @@
 </head>
 <body>
 <header>
-  <img class="hero-foto" src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-sorrindo.jpg" alt="Pedrinho Franco sorrindo">
-  <h1>Pedro Ivo de Oliveira</h1>
-  <div class="apelido">"Pedrinho Franco"</div>
-  <div class="datas">23 de março de 1954 &nbsp;✦&nbsp; 27 de dezembro de 2025</div>
-  <div class="frase">Sua alegria e sua música ficam para sempre na nossa memória.</div>
+  <img class="hero-foto" id="hero-img" src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-sorrindo.jpg" alt="Pedrinho Franco sorrindo">
+  <h1 id="c-nome">Pedro Ivo de Oliveira</h1>
+  <div class="apelido" id="c-apelido">"Pedrinho Franco"</div>
+  <div class="datas" id="c-datas">23 de março de 1954 &nbsp;✦&nbsp; 27 de dezembro de 2025</div>
+  <div class="frase" id="c-frase">Sua alegria e sua música ficam para sempre na nossa memória.</div>
 </header>
 
 <div class="wrap">
-  <section class="historia">
+  <section class="historia" id="c-historia">
     <h2>Sua história</h2>
     <p>Pedro Ivo de Oliveira, conhecido carinhosamente como <strong>Pedrinho Franco</strong>, nasceu em 23 de março de 1954, filho de Luiz Gonzaga Franco e Maria de Lourdes de Oliveira.</p>
     <p>Alegre por natureza, Pedrinho era daquelas pessoas que faziam amigos por onde passava. Seresteiro por muitos anos, levou a música no peito: tocou e cantou ao lado de Luiz Gonzaga, o Rei do Baião, e correu o mundo com ele.</p>
@@ -73,11 +73,11 @@
 
   <section class="galeria">
     <h2>Lembranças</h2>
-    <div class="grid">
+    <div class="grid" id="c-grid">
       <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-sorrindo.jpg" alt="Pedrinho Franco sorrindo com a camisa do Rei do Baião">
       <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg" alt="Pedrinho Franco cantando com o microfone">
     </div>
-    <video controls preload="metadata" poster="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg">
+    <video id="c-video" controls preload="metadata" poster="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg">
       <source src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/video-pedrinho.mp4" type="video/mp4">
       Seu navegador não conseguiu carregar o vídeo.
     </video>
@@ -119,7 +119,8 @@
 
 <footer>
   Feito com carinho pela família. 🕊️<br>
-  Pedro Ivo de Oliveira, o Pedrinho Franco — para sempre em nossos corações.
+  Pedro Ivo de Oliveira, o Pedrinho Franco — para sempre em nossos corações.<br>
+  <a href="admin.html" style="color:#5a5148;font-size:.8rem;text-decoration:none">Administração</a>
 </footer>
 
 <script>
@@ -148,8 +149,33 @@ async function acenderVela(){
   btn.disabled = true;
   const {error} = await sb.from('velas').insert({pessoa:PESSOA});
   document.getElementById('vela').classList.add('acesa');
-  btn.textContent = "Vela acesa 🕯️";
-  carregarVelas();
+  if(!error){ btn.textContent = "Vela acesa 🕯️"; }
+  else { btn.textContent = "Vela acesa 🕯️"; }
+  
+async function carregarConteudo(){
+  try{
+    const {data, error} = await sb.from('conteudo').select('dados').eq('pessoa',PESSOA).maybeSingle();
+    if(error || !data || !data.dados){ return; }
+    const c = data.dados;
+    if(c.nome){ document.getElementById('c-nome').textContent = c.nome; document.title = c.nome + (c.apelido ? ' — ' + c.apelido : ''); }
+    if(c.apelido){ document.getElementById('c-apelido').textContent = '"' + c.apelido + '"'; }
+    if(c.nascimento || c.falecimento){ document.getElementById('c-datas').textContent = (c.nascimento||'') + '  ✦  ' + (c.falecimento||''); }
+    if(c.frase){ document.getElementById('c-frase').textContent = c.frase; }
+    if(c.historia){
+      const paras = c.historia.split(/\n\n+/).map(p=>p.trim()).filter(Boolean);
+      document.getElementById('c-historia').innerHTML = '<h2>Sua história</h2>' + paras.map(p=>'<p>'+esc(p)+'</p>').join('');
+    }
+    if(c.foto_hero){ document.getElementById('hero-img').src = c.foto_hero; }
+    if(Array.isArray(c.fotos) && c.fotos.length){
+      document.getElementById('c-grid').innerHTML = c.fotos.map(u=>'<img src="'+u+'" alt="Foto de '+(c.apelido||c.nome||'')+'">').join('');
+    }
+    const v = document.getElementById('c-video');
+    if(c.video){ v.querySelector('source').src = c.video; v.load(); }
+    if(c.poster){ v.poster = c.poster; }
+  }catch(e){ /* mantem conteudo estatico */ }
+}
+carregarConteudo();
+carregarVelas();
 }
 
 async function carregarRecados(){
