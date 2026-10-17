@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Painel do Memorial</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--bg:#141110;--card:#1e1a17;--line:#38312a;--text:#efe7db;--muted:#a89a88;
+        --gold:#c9a15a;--gold2:#e2c284;--danger:#c96a5a;--ok:#7fb069}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:Georgia,'Times New Roman',serif;line-height:1.6}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:14px 0 18px;border-bottom:1px solid var(--line);margin-bottom:20px}
+  header.top h1{font-size:1.15rem;font-weight:normal;color:var(--gold2)}
+  header.top .sub{color:var(--muted);font-size:.8rem}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;padding:12px 16px;
+    font-size:1rem;background:var(--gold);color:#1c1712;width:100%;min-height:48px}
+  button.sec{background:transparent;color:var(--gold2);border:1px solid var(--gold);width:auto;padding:8px 14px;min-height:0;font-size:.9rem}
+  button.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);width:auto;padding:8px 14px;min-height:0;font-size:.9rem}
+  button.ok{background:transparent;color:var(--ok);border:1px solid var(--ok);width:auto;padding:8px 14px;min-height:0;font-size:.9rem}
+  button:disabled{opacity:.5}
+  input,textarea{width:100%;background:#100e0c;border:1px solid var(--line);color:var(--text);
+    border-radius:10px;padding:12px 14px;font-size:1rem;font-family:inherit;margin-bottom:10px}
+  textarea{min-height:110px;resize:vertical}
+  label{display:block;color:var(--muted);font-size:.85rem;margin:8px 0 4px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin-bottom:18px}
+  .card h2{font-size:1.05rem;font-weight:normal;color:var(--gold2);margin-bottom:10px;
+    display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .card h2 .n{font-size:.85rem;color:var(--muted)}
+  .recado{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#171310}
+  .recado .quem{color:var(--gold2);font-size:.95rem}
+  .recado .quando{color:var(--muted);font-size:.78rem;margin-top:6px}
+  .recado .acoes{display:flex;gap:8px;margin-top:10px}
+  .vazio{color:var(--muted);font-style:italic;font-size:.95rem}
+  .aviso{color:var(--muted);font-size:.82rem;margin-top:8px}
+  .msg-ok{color:var(--ok);font-size:.9rem;margin-top:8px;display:none}
+  .msg-erro{color:var(--danger);font-size:.9rem;margin-top:8px;display:none}
+  .hidden{display:none}
+  .velas-n{font-size:2rem;color:var(--gold2)}
+  .foto-item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);
+    border-radius:10px;padding:8px;margin-bottom:8px;background:#171310}
+  .foto-item img{width:64px;height:64px;object-fit:cover;border-radius:8px}
+  .foto-item .acoes{display:flex;flex-direction:column;gap:6px;margin-left:auto}
+  .foto-item .tag{font-size:.75rem;color:var(--gold)}
+  .file-row{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  a.link{color:var(--gold2);font-size:.85rem}
+  .topo-btn{width:auto;padding:8px 14px;min-height:0;font-size:.85rem;background:transparent;
+    color:var(--muted);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Painel do Memorial</h1>
+      <div class="sub">Pedrinho Franco</div>
+    </div>
+    <button class="topo-btn hidden" id="btn-sair" onclick="sair()">Sair</button>
+  </header>
+
+  <!-- LOGIN -->
+  <section id="tela-login" class="card hidden">
+    <h2>Entrar</h2>
+    <label for="login-email">E-mail</label>
+    <input type="email" id="login-email" autocomplete="email" placeholder="seu e-mail">
+    <label for="login-senha">Senha</label>
+    <input type="password" id="login-senha" autocomplete="current-password" placeholder="sua senha">
+    <button id="btn-entrar" onclick="entrar()">Entrar</button>
+    <div class="msg-erro" id="login-erro"></div>
+    <p class="aviso" style="margin-top:14px">
+      <a class="link" href="#" onclick="pedirRedefinicao(event)">Esqueci a senha — receber link por e-mail</a>
+    </p>
+    <div class="msg-ok" id="redef-ok">Link enviado. Abra o e-mail e toque no link para criar uma nova senha.</div>
+  </section>
+
+  <!-- DEFINIR NOVA SENHA (link do e-mail) -->
+  <section id="tela-nova-senha" class="card hidden">
+    <h2>Crie sua senha</h2>
+    <p class="aviso">Escolha uma senha que só você saiba. Ela protege o painel do memorial.</p>
+    <label for="nova-senha">Nova senha (mínimo 8 caracteres)</label>
+    <input type="password" id="nova-senha" autocomplete="new-password">
+    <label for="nova-senha2">Repita a senha</label>
+    <input type="password" id="nova-senha2" autocomplete="new-password">
+    <button onclick="salvarNovaSenha()">Salvar senha e entrar</button>
+    <div class="msg-erro" id="senha-erro"></div>
+  </section>
+
+  <!-- PAINEL -->
+  <div id="painel" class="hidden">
+
+    <section class="card">
+      <h2>Recados aguardando aprovação <span class="n" id="n-pendentes"></span></h2>
+      <div id="lista-pendentes"><p class="vazio">Carregando…</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Recados publicados <span class="n" id="n-aprovados"></span></h2>
+      <div id="lista-aprovados"><p class="vazio">Carregando…</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Velas acesas</h2>
+      <div class="velas-n" id="velas-n">…</div>
+    </section>
+
+    <section class="card">
+      <h2>Textos da página</h2>
+      <label for="f-nome">Nome completo</label>
+      <input type="text" id="f-nome">
+      <label for="f-apelido">Apelido (entre aspas na página)</label>
+      <input type="text" id="f-apelido">
+      <label for="f-nasc">Nascimento (ex.: 23 de março de 1954)</label>
+      <input type="text" id="f-nasc">
+      <label for="f-falec">Falecimento</label>
+      <input type="text" id="f-falec">
+      <label for="f-frase">Frase de despedida</label>
+      <input type="text" id="f-frase">
+      <label for="f-historia">História (separe os parágrafos com uma linha em branco)</label>
+      <textarea id="f-historia" style="min-height:220px"></textarea>
+      <button onclick="salvarTextos()">Salvar textos</button>
+      <div class="msg-ok" id="txt-ok">Textos salvos. A página já mostra a nova versão.</div>
+      <div class="msg-erro" id="txt-erro"></div>
+    </section>
+
+    <section class="card">
+      <h2>Fotos</h2>
+      <div id="lista-fotos"><p class="vazio">Carregando…</p></div>
+      <div class="file-row">
+        <label for="nova-foto">Adicionar foto (escolhe no celular ou tira na hora)</label>
+        <input type="file" id="nova-foto" accept="image/*">
+        <button class="sec" style="width:100%" onclick="enviarFoto()">Enviar foto</button>
+      </div>
+      <div class="msg-ok" id="foto-ok"></div>
+      <div class="msg-erro" id="foto-erro"></div>
+    </section>
+
+    <section class="card">
+      <h2>Vídeo</h2>
+      <video id="video-atual" controls style="width:100%;border-radius:10px;background:#000"></video>
+      <div class="file-row">
+        <label for="novo-video">Trocar vídeo (arquivos grandes demoram)</label>
+        <input type="file" id="novo-video" accept="video/*">
+        <button class="sec" style="width:100%" onclick="enviarVideo()">Enviar novo vídeo</button>
+      </div>
+      <div class="msg-ok" id="video-ok"></div>
+      <div class="msg-erro" id="video-erro"></div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://ckbvqzfzwglybxyygpof.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_QOmw-zfH6YTxA5TqDIrifA_9TPDhe8o";
+const PESSOA = "pedrinho-franco";
+const DONO_UID = "03677158-15a1-493b-887a-64acd183e0a7";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let conteudo = null;
+
+function mostra(id){ document.getElementById(id).classList.remove('hidden'); }
+function esconde(id){ document.getElementById(id).classList.add('hidden'); }
+function erro(id, txt){ const e=document.getElementById(id); e.textContent=txt; e.style.display='block'; }
+function ok(id, txt){ const e=document.getElementById(id); e.textContent=txt||e.textContent; e.style.display='block'; setTimeout(()=>e.style.display='none', 4000); }
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function fmtData(iso){ try{ return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}); }catch(e){ return ""; } }
+
+async function entrar(){
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  document.getElementById('login-erro').style.display='none';
+  const btn = document.getElementById('btn-entrar');
+  btn.disabled = true; btn.textContent = "Entrando…";
+  const {error} = await sb.auth.signInWithPassword({email, password: senha});
+  btn.disabled = false; btn.textContent = "Entrar";
+  if(error){ erro('login-erro', "E-mail ou senha não conferem."); return; }
+  iniciar();
+}
+
+async function pedirRedefinicao(ev){
+  ev.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  if(!email){ erro('login-erro', "Digite seu e-mail acima para receber o link."); return; }
+  const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: location.origin + location.pathname});
+  if(error){ erro('login-erro', "Não consegui enviar agora. Tente de novo."); return; }
+  document.getElementById('redef-ok').style.display='block';
+}
+
+async function salvarNovaSenha(){
+  const s1 = document.getElementById('nova-senha').value;
+  const s2 = document.getElementById('nova-senha2').value;
+  document.getElementById('senha-erro').style.display='none';
+  if(s1.length < 8){ erro('senha-erro', "Use pelo menos 8 caracteres."); return; }
+  if(s1 !== s2){ erro('senha-erro', "As duas senhas estão diferentes."); return; }
+  const {error} = await sb.auth.updateUser({password: s1});
+  if(error){ erro('senha-erro', "Não deu para salvar. Abra o link do e-mail de novo."); return; }
+  history.replaceState(null,'',location.pathname);
+  iniciar();
+}
+
+async function sair(){ await sb.auth.signOut(); location.reload(); }
+
+async function iniciar(){
+  const {data:{user}} = await sb.auth.getUser();
+  if(!user){ esconde('tela-nova-senha'); mostra('tela-login'); return; }
+  if(user.id !== DONO_UID){
+    esconde('tela-login'); esconde('tela-nova-senha');
+    document.querySelector('.wrap').insertAdjacentHTML('beforeend',
+      '<p class="vazio" style="text-align:center;margin-top:40px">Esta conta não tem acesso ao painel.</p>');
+    return;
+  }
+  esconde('tela-login'); esconde('tela-nova-senha');
+  mostra('btn-sair'); mostra('painel');
+  carregarRecados(); carregarVelas(); carregarConteudo();
+}
+
+/* ---------- RECADOS ---------- */
+async function carregarRecados(){
+  const {data, error} = await sb.from('recados').select('*').eq('pessoa',PESSOA)
+    .order('created_at',{ascending:false}).limit(200);
+  if(error){ document.getElementById('lista-pendentes').innerHTML = '<p class="vazio">Erro ao carregar.</p>'; return; }
+  const pend = data.filter(r=>!r.aprovado);
+  const aprov = data.filter(r=>r.aprovado);
+  document.getElementById('n-pendentes').textContent = pend.length ? '('+pend.length+')' : '';
+  document.getElementById('n-aprovados').textContent = aprov.length ? '('+aprov.length+')' : '';
+  document.getElementById('lista-pendentes').innerHTML = pend.length ? pend.map(r=>
+    '<div class="recado"><div class="quem">'+esc(r.nome)+'</div><div>'+esc(r.mensagem)+'</div>'+
+    '<div class="quando">'+fmtData(r.created_at)+'</div>'+
+    '<div class="acoes"><button class="ok" onclick="aprovar('+r.id+')">Aprovar</button>'+
+    '<button class="danger" onclick="apagar('+r.id+')">Apagar</button></div></div>').join('')
+    : '<p class="vazio">Nenhum recado aguardando.</p>';
+  document.getElementById('lista-aprovados').innerHTML = aprov.length ? aprov.map(r=>
+    '<div class="recado"><div class="quem">'+esc(r.nome)+'</div><div>'+esc(r.mensagem)+'</div>'+
+    '<div class="quando">'+fmtData(r.created_at)+'</div>'+
+    '<div class="acoes"><button class="danger" onclick="apagar('+r.id+')">Apagar</button></div></div>').join('')
+    : '<p class="vazio">Nenhum recado publicado ainda.</p>';
+}
+async function aprovar(id){
+  const {error} = await sb.from('recados').update({aprovado:true}).eq('id',id);
+  if(error){ alert('Não consegui aprovar. Tente de novo.'); return; }
+  carregarRecados();
+}
+async function apagar(id){
+  if(!confirm('Apagar este recado para sempre?')){ return; }
+  const {error} = await sb.from('recados').delete().eq('id',id);
+  if(error){ alert('Não consegui apagar. Tente de novo.'); return; }
+  carregarRecados();
+}
+
+/* ---------- VELAS ---------- */
+async function carregarVelas(){
+  const {count, error} = await sb.from('velas').select('*',{count:'exact',head:true}).eq('pessoa',PESSOA);
+  document.getElementById('velas-n').textContent = error ? '—' : (count||0) + ' 🕯️';
+}
+
+/* ---------- CONTEUDO ---------- */
+async function carregarConteudo(){
+  const {data, error} = await sb.from('conteudo').select('dados').eq('pessoa',PESSOA).maybeSingle();
+  if(error || !data){ return; }
+  conteudo = data.dados;
+  document.getElementById('f-nome').value = conteudo.nome || '';
+  document.getElementById('f-apelido').value = conteudo.apelido || '';
+  document.getElementById('f-nasc').value = conteudo.nascimento || '';
+  document.getElementById('f-falec').value = conteudo.falecimento || '';
+  document.getElementById('f-frase').value = conteudo.frase || '';
+  document.getElementById('f-historia').value = conteudo.historia || '';
+  if(conteudo.video){ document.getElementById('video-atual').src = conteudo.video; }
+  renderFotos();
+}
+function renderFotos(){
+  const fotos = (conteudo && conteudo.fotos) || [];
+  document.getElementById('lista-fotos').innerHTML = fotos.length ? fotos.map((u,i)=>
+    '<div class="foto-item"><img src="'+u+'">'+
+    '<div>'+(u===conteudo.foto_hero ? '<span class="tag">Foto principal</span>' : '')+'</div>'+
+    '<div class="acoes">'+(u!==conteudo.foto_hero ? '<button class="sec" onclick="definirPrincipal('+i+')">Tornar principal</button>' : '')+
+    '<button class="danger" onclick="removerFoto('+i+')">Remover</button></div></div>').join('')
+    : '<p class="vazio">Nenhuma foto.</p>';
+}
+async function salvarConteudo(){
+  const {error} = await sb.from('conteudo').upsert({pessoa:PESSOA, dados:conteudo, updated_at:new Date().toISOString()});
+  return error;
+}
+async function salvarTextos(){
+  if(!conteudo){ conteudo = {}; }
+  conteudo.nome = document.getElementById('f-nome').value.trim();
+  conteudo.apelido = document.getElementById('f-apelido').value.trim();
+  conteudo.nascimento = document.getElementById('f-nasc').value.trim();
+  conteudo.falecimento = document.getElementById('f-falec').value.trim();
+  conteudo.frase = document.getElementById('f-frase').value.trim();
+  conteudo.historia = document.getElementById('f-historia').value;
+  document.getElementById('txt-erro').style.display='none';
+  const error = await salvarConteudo();
+  if(error){ erro('txt-erro', 'Não consegui salvar. Tente de novo.'); return; }
+  ok('txt-ok');
+}
+async function definirPrincipal(i){
+  conteudo.foto_hero = conteudo.fotos[i];
+  const error = await salvarConteudo();
+  if(error){ erro('foto-erro', 'Não consegui salvar.'); return; }
+  renderFotos(); ok('foto-ok','Foto principal atualizada.');
+}
+async function removerFoto(i){
+  if(!confirm('Tirar esta foto da página?')){ return; }
+  const u = conteudo.fotos.splice(i,1)[0];
+  if(conteudo.foto_hero === u){ conteudo.foto_hero = conteudo.fotos[0] || ''; }
+  const error = await salvarConteudo();
+  if(error){ erro('foto-erro', 'Não consegui salvar.'); return; }
+  renderFotos(); ok('foto-ok','Foto removida da página.');
+}
+async function enviarFoto(){
+  const f = document.getElementById('nova-foto').files[0];
+  if(!f){ erro('foto-erro','Escolha uma foto primeiro.'); return; }
+  document.getElementById('foto-erro').style.display='none';
+  const nome = 'foto-' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9.\-]/g,'_');
+  const {error} = await sb.storage.from('memorial').upload(nome, f, {cacheControl:'3600', upsert:false});
+  if(error){ erro('foto-erro','Não consegui enviar. Tente de novo.'); return; }
+  const url = SUPABASE_URL + '/storage/v1/object/public/memorial/' + nome;
+  conteudo.fotos = conteudo.fotos || [];
+  conteudo.fotos.push(url);
+  const e2 = await salvarConteudo();
+  if(e2){ erro('foto-erro','Foto enviada, mas não entrou na página. Tente de novo.'); return; }
+  document.getElementById('nova-foto').value = '';
+  renderFotos(); ok('foto-ok','Foto adicionada à página.');
+}
+async function enviarVideo(){
+  const f = document.getElementById('novo-video').files[0];
+  if(!f){ erro('video-erro','Escolha um vídeo primeiro.'); return; }
+  document.getElementById('video-erro').style.display='none';
+  ok('video-ok','Enviando… pode demorar um pouco.');
+  const nome = 'video-' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9.\-]/g,'_');
+  const {error} = await sb.storage.from('memorial').upload(nome, f, {cacheControl:'3600', upsert:false});
+  if(error){ erro('video-erro','Não consegui enviar. Tente de novo.'); return; }
+  const url = SUPABASE_URL + '/storage/v1/object/public/memorial/' + nome;
+  conteudo.video = url;
+  const e2 = await salvarConteudo();
+  if(e2){ erro('video-erro','Vídeo enviado, mas não entrou na página. Tente de novo.'); return; }
+  document.getElementById('novo-video').value = '';
+  document.getElementById('video-atual').src = url;
+  ok('video-ok','Vídeo atualizado na página.');
+}
+
+/* ---------- ENTRADA ---------- */
+(async function(){
+  // chegada pelo link de redefinicao de senha do e-mail
+  if(location.hash.indexOf('type=recovery') !== -1){ mostra('tela-nova-senha'); return; }
+  sb.auth.onAuthStateChange((event)=>{
+    if(event === 'PASSWORD_RECOVERY'){ mostra('tela-nova-senha'); esconde('tela-login'); }
+  });
+  iniciar();
+})();
+</script>
+</body>
+</html>
