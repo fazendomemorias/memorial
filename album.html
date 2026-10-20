@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Álbum — Pedrinho Franco</title>
+<meta name="description" content="Álbum de lembranças de Pedro Ivo de Oliveira, o Pedrinho Franco.">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#171310; --bg2:#211b16; --card:#26201a; --txt:#f0e8dd; --muted:#b9ab99;
+    --gold:#d9a441; --gold2:#f2c66d; --line:#3a322a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:Georgia,'Times New Roman',serif;line-height:1.65}
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
+  header{text-align:center;padding:40px 20px 10px;background:radial-gradient(ellipse at top,#2b231b 0%,var(--bg) 70%)}
+  .voltar{display:inline-block;color:var(--gold2);text-decoration:none;border:1px solid var(--line);border-radius:24px;padding:9px 18px;background:var(--card);margin-bottom:22px;font-size:1rem}
+  .voltar:hover{border-color:var(--gold)}
+  h1{font-size:1.8rem;letter-spacing:.5px}
+  .sub{color:var(--muted);margin-top:8px;font-size:1rem}
+  section{padding:26px 0 40px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid img{width:100%;border-radius:10px;border:1px solid var(--line);display:block}
+  video{width:100%;border-radius:10px;border:1px solid var(--line);margin-top:12px;background:#000}
+  .vazio{color:var(--muted);text-align:center;font-style:italic;padding:30px 0}
+  footer{text-align:center;color:var(--muted);font-size:.9rem;padding:30px 20px 50px;border-top:1px solid var(--line);margin-top:20px}
+  footer a{color:var(--gold2);text-decoration:none}
+  @media(max-width:520px){h1{font-size:1.5rem}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <a class="voltar" href="./">← Voltar ao memorial</a>
+  <h1 id="titulo">Álbum</h1>
+  <div class="sub" id="conta"></div>
+</header>
+
+<div class="wrap">
+  <section>
+    <p class="vazio" id="vazio" hidden>Este álbum ainda não tem fotos ou vídeos.</p>
+    <div class="grid" id="grid"></div>
+    <div id="videos"></div>
+  </section>
+</div>
+
+<footer>
+  <a href="./">Pedro Ivo de Oliveira, o Pedrinho Franco</a> — para sempre em nossos corações. 🕊️
+</footer>
+
+<script>
+const SUPABASE_URL = "https://ckbvqzfzwglybxyygpof.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_QOmw-zfH6YTxA5TqDIrifA_9TPDhe8o";
+const PESSOA = "pedrinho-franco";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const ALBUNS = ['Todos','Geral','Amigos','Família','Eu','Viagens'];
+const FOTO_BASE = "https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/";
+let album = new URLSearchParams(location.search).get('album') || 'Todos';
+if(!ALBUNS.includes(album)){ album = 'Todos'; }
+let fotosGaleria = [
+  {url:FOTO_BASE+'foto-sorrindo.jpg',alt:'Pedrinho Franco sorrindo com a camisa do Rei do Baião'},
+  {url:FOTO_BASE+'foto-cantando.jpg',alt:'Pedrinho Franco cantando com o microfone'}
+];
+let albunsFotos = {};
+let videosGaleria = [{url:FOTO_BASE+'video-pedrinho.mp4',poster:FOTO_BASE+'foto-cantando.jpg'}];
+let albunsVideos = {};
+let posterGeral = FOTO_BASE+'foto-cantando.jpg';
+
+function plural(n,s){ return n + ' ' + s + (n===1?'':'s'); }
+function render(){
+  document.getElementById('titulo').textContent = album === 'Todos' ? 'Todas as lembranças' : 'Álbum: ' + album;
+  document.title = (album === 'Todos' ? 'Todas as lembranças' : album) + ' — Pedrinho Franco';
+  const fotos = fotosGaleria.filter(f=>album === 'Todos' || (albunsFotos[f.url] || 'Geral') === album);
+  const videos = videosGaleria.filter(v=>album === 'Todos' || (albunsVideos[v.url] || 'Geral') === album);
+  document.getElementById('conta').textContent =
+    (fotos.length + videos.length === 0) ? '' :
+    plural(fotos.length,'foto') + ' • ' + plural(videos.length,'vídeo');
+  const grid = document.getElementById('grid'); grid.replaceChildren();
+  fotos.forEach(f=>{ const img=document.createElement('img'); img.src=f.url; img.alt=f.alt||'Lembrança'; img.loading='lazy'; grid.appendChild(img); });
+  const vbox = document.getElementById('videos'); vbox.replaceChildren();
+  videos.forEach(item=>{ const v=document.createElement('video'); v.controls=true; v.preload='metadata'; v.src=item.url; if(item.poster)v.poster=item.poster; vbox.appendChild(v); });
+  document.getElementById('vazio').hidden = fotos.length + videos.length > 0;
+}
+render();
+
+async function carregarConteudo(){
+  try{
+    const {data, error} = await sb.from('conteudo').select('dados').eq('pessoa',PESSOA).maybeSingle();
+    if(error || !data || !data.dados){ return; }
+    const c = data.dados;
+    if(Array.isArray(c.fotos)){
+      fotosGaleria = c.fotos.map(url=>({url,alt:'Foto de '+(c.apelido||c.nome||'')}));
+      albunsFotos = c.foto_albuns || {};
+    }
+    videosGaleria = Array.from(new Set([...(c.videos || []), ...(c.video ? [c.video] : [])])).map(url=>({url,poster:c.poster||''}));
+    albunsVideos = c.video_albuns || {};
+    render();
+  }catch(e){ /* mantem conteudo estatico */ }
+}
+carregarConteudo();
+</script>
+</body>
+</html>
