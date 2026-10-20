@@ -24,10 +24,16 @@
   h2{color:var(--gold);font-size:1.45rem;text-align:center;margin-bottom:20px}
   h2::after{content:"";display:block;width:60px;height:2px;background:var(--gold);margin:10px auto 0;opacity:.6}
   .historia p{margin-bottom:14px;text-align:justify}
-  .albuns{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
-  .albuns button{width:auto;min-height:44px;padding:9px 14px;border:1px solid var(--line);border-radius:24px;background:var(--card);color:var(--gold2);font:inherit;cursor:pointer}
-  .albuns button[aria-pressed="true"]{background:var(--gold);color:#191510}
-  #album-vazio{color:var(--muted);padding:14px 0}
+  .galeria-intro{color:var(--muted);text-align:center;margin:-8px 0 18px;font-style:italic}
+  .albuns-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .album-card{display:block;text-decoration:none;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;color:var(--txt);transition:border-color .2s}
+  .album-card:hover{border-color:var(--gold)}
+  .album-cover{aspect-ratio:16/10;background:#1c1712;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .album-cover img{width:100%;height:100%;object-fit:cover;display:block}
+  .album-cover .sem-foto{font-size:2rem;opacity:.5}
+  .album-info{padding:12px 14px}
+  .album-nome{color:var(--gold2);font-size:1.05rem;display:block}
+  .album-conta{color:var(--muted);font-size:.85rem;display:block;margin-top:2px}
   select{width:100%;padding:12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:14px}
   .galeria .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .galeria img{width:100%;border-radius:10px;border:1px solid var(--line)}
@@ -56,7 +62,7 @@
   .vazio{color:var(--muted);text-align:center;font-style:italic}
   footer{text-align:center;color:var(--muted);font-size:.9rem;padding:34px 20px 50px;border-top:1px solid var(--line);margin-top:20px}
   .ok-msg{text-align:center;color:var(--gold2);margin-top:14px;display:none}
-  @media(max-width:520px){h1{font-size:1.7rem}.galeria .grid{grid-template-columns:1fr}}
+  @media(max-width:520px){h1{font-size:1.7rem}.galeria .grid{grid-template-columns:1fr}.albuns-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -78,16 +84,8 @@
 
   <section class="galeria">
     <h2>Álbuns de lembranças</h2>
-    <div class="albuns" id="albuns" aria-label="Escolha um álbum"></div>
-    <p id="album-vazio" hidden>Este álbum ainda não tem fotos.</p>
-    <div class="grid" id="c-grid">
-      <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-sorrindo.jpg" alt="Pedrinho Franco sorrindo com a camisa do Rei do Baião">
-      <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg" alt="Pedrinho Franco cantando com o microfone">
-    </div>
-    <video id="c-video" controls preload="metadata" poster="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg">
-      <source src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/video-pedrinho.mp4" type="video/mp4">
-      Seu navegador não conseguiu carregar o vídeo.
-    </video>
+    <p class="galeria-intro">Toque em um álbum para ver as fotos e os vídeos.</p>
+    <div class="albuns-grid" id="albuns-grid"></div>
   </section>
 
   <section>
@@ -138,34 +136,42 @@ const SUPABASE_ANON_KEY = "sb_publishable_QOmw-zfH6YTxA5TqDIrifA_9TPDhe8o";
 const PESSOA = "pedrinho-franco";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ALBUNS = ['Todos','Geral','Amigos','Família','Eu','Viagens'];
-let albumAtual = 'Todos';
-let fotosGaleria = Array.from(document.querySelectorAll('#c-grid img')).map(img=>({url:img.src,alt:img.alt}));
+const FOTO_BASE = "https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/";
+let fotosGaleria = [
+  {url:FOTO_BASE+'foto-sorrindo.jpg',alt:'Pedrinho Franco sorrindo com a camisa do Rei do Baião'},
+  {url:FOTO_BASE+'foto-cantando.jpg',alt:'Pedrinho Franco cantando com o microfone'}
+];
 let albunsFotos = {};
-let videosGaleria = [{url:document.querySelector('#c-video source').src,poster:document.getElementById('c-video').poster}];
+let videosGaleria = [{url:FOTO_BASE+'video-pedrinho.mp4',poster:FOTO_BASE+'foto-cantando.jpg'}];
 let albunsVideos = {};
-function escolherAlbum(album){
-  if(!ALBUNS.includes(album)){ return; }
-  albumAtual = album;
-  const barra = document.getElementById('albuns');
-  barra.replaceChildren();
-  ALBUNS.forEach(a=>{
-    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = a;
-    btn.setAttribute('aria-pressed',String(a === albumAtual));
-    btn.onclick = ()=>escolherAlbum(a); barra.appendChild(btn);
-  });
+function plural(n,s){ return n + ' ' + s + (n===1?'':'s'); }
+function capaDoAlbum(album){
   const fotos = fotosGaleria.filter(f=>album === 'Todos' || (albunsFotos[f.url] || 'Geral') === album);
-  const grid = document.getElementById('c-grid'); grid.replaceChildren();
-  fotos.forEach(f=>{ const img=document.createElement('img'); img.src=f.url; img.alt=f.alt; img.loading='lazy'; grid.appendChild(img); });
-  let videos = document.getElementById('c-videos');
-  if(!videos){ videos=document.createElement('div'); videos.id='c-videos'; document.getElementById('c-video').replaceWith(videos); }
-  videos.replaceChildren();
-  const selecionados=videosGaleria.filter(v=>album === 'Todos' || (albunsVideos[v.url] || 'Geral') === album);
-  selecionados.forEach(item=>{const v=document.createElement('video');v.controls=true;v.preload='metadata';v.src=item.url;if(item.poster)v.poster=item.poster;videos.appendChild(v);});
-  document.getElementById('album-vazio').textContent='Este álbum ainda não tem fotos ou vídeos.';
-  document.getElementById('album-vazio').hidden = fotos.length + selecionados.length > 0;
-  document.getElementById('historia-album').value = album === 'Todos' ? '' : album;
+  if(fotos.length){ return fotos[0].url; }
+  const videos = videosGaleria.filter(v=>album === 'Todos' || (albunsVideos[v.url] || 'Geral') === album);
+  if(videos.length && videos[0].poster){ return videos[0].poster; }
+  return '';
 }
-escolherAlbum('Todos');
+function renderAlbuns(){
+  const box = document.getElementById('albuns-grid');
+  box.replaceChildren();
+  ALBUNS.forEach(a=>{
+    const fotos = fotosGaleria.filter(f=>a === 'Todos' || (albunsFotos[f.url] || 'Geral') === a);
+    const videos = videosGaleria.filter(v=>a === 'Todos' || (albunsVideos[v.url] || 'Geral') === a);
+    const total = fotos.length + videos.length;
+    const card = document.createElement('a');
+    card.className = 'album-card';
+    card.href = 'album.html?album=' + encodeURIComponent(a);
+    const capa = capaDoAlbum(a);
+    const nome = a === 'Todos' ? 'Todas as lembranças' : a;
+    card.innerHTML =
+      '<div class="album-cover">' + (capa ? '<img src="'+capa+'" alt="" loading="lazy">' : '<span class="sem-foto">🕊️</span>') + '</div>' +
+      '<div class="album-info"><span class="album-nome">'+nome+'</span>' +
+      '<span class="album-conta">' + (total ? plural(fotos.length,'foto')+' • '+plural(videos.length,'vídeo') : 'Nenhuma lembrança ainda') + '</span></div>';
+    box.appendChild(card);
+  });
+}
+renderAlbuns();
 
 function fmtData(iso){
   try{ return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}); }
@@ -209,11 +215,10 @@ async function carregarConteudo(){
     if(Array.isArray(c.fotos)){
       fotosGaleria = c.fotos.map(url=>({url,alt:'Foto de '+(c.apelido||c.nome||'')}));
       albunsFotos = c.foto_albuns || {};
-      escolherAlbum(albumAtual);
     }
     videosGaleria = Array.from(new Set([...(c.videos || []), ...(c.video ? [c.video] : [])])).map(url=>({url,poster:c.poster||''}));
     albunsVideos = c.video_albuns || {};
-    escolherAlbum(albumAtual);
+    renderAlbuns();
   }catch(e){ /* mantem conteudo estatico */ }
 }
 carregarConteudo();
