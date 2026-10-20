@@ -24,6 +24,11 @@
   h2{color:var(--gold);font-size:1.45rem;text-align:center;margin-bottom:20px}
   h2::after{content:"";display:block;width:60px;height:2px;background:var(--gold);margin:10px auto 0;opacity:.6}
   .historia p{margin-bottom:14px;text-align:justify}
+  .albuns{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+  .albuns button{width:auto;min-height:44px;padding:9px 14px;border:1px solid var(--line);border-radius:24px;background:var(--card);color:var(--gold2);font:inherit;cursor:pointer}
+  .albuns button[aria-pressed="true"]{background:var(--gold);color:#191510}
+  #album-vazio{color:var(--muted);padding:14px 0}
+  select{width:100%;padding:12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit;margin-bottom:14px}
   .galeria .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .galeria img{width:100%;border-radius:10px;border:1px solid var(--line)}
   .galeria video{width:100%;border-radius:10px;border:1px solid var(--line);margin-top:12px;background:#000}
@@ -72,7 +77,9 @@
   </section>
 
   <section class="galeria">
-    <h2>Lembranças</h2>
+    <h2>Álbuns de lembranças</h2>
+    <div class="albuns" id="albuns" aria-label="Escolha um álbum"></div>
+    <p id="album-vazio" hidden>Este álbum ainda não tem fotos.</p>
     <div class="grid" id="c-grid">
       <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-sorrindo.jpg" alt="Pedrinho Franco sorrindo com a camisa do Rei do Baião">
       <img src="https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/foto-cantando.jpg" alt="Pedrinho Franco cantando com o microfone">
@@ -98,21 +105,23 @@
   </section>
 
   <section>
-    <h2>Deixe uma mensagem de saudade</h2>
+    <h2>Conte uma história ou deixe uma mensagem</h2>
     <form id="form-recado" onsubmit="enviarRecado(event)">
       <input class="hp" type="text" id="hp" name="hp" tabindex="-1" autocomplete="off">
       <label for="nome">Seu nome</label>
       <input type="text" id="nome" maxlength="80" required placeholder="Como você quer ser identificado(a)">
-      <label for="mensagem">Sua mensagem</label>
-      <textarea id="mensagem" maxlength="600" required placeholder="Escreva aqui sua lembrança, sua saudade, sua homenagem…"></textarea>
+      <label for="historia-album">Sobre qual álbum? (opcional)</label>
+      <select id="historia-album"><option value="">Homenagem em geral</option><option>Geral</option><option>Amigos</option><option>Família</option><option>Eu</option><option>Viagens</option></select>
+      <label for="mensagem">Sua história ou mensagem</label>
+      <textarea id="mensagem" maxlength="560" required placeholder="Escreva aqui sua lembrança, sua saudade, sua homenagem…"></textarea>
       <button class="form-btn" type="submit" id="btn-recado">Enviar mensagem</button>
       <div class="ok-msg" id="ok-msg">Mensagem recebida. Ela aparecerá aqui após a aprovação da família. 🙏</div>
-      <div class="aviso">As mensagens passam pela aprovação da família antes de aparecer nesta página.</div>
+      <div class="aviso">As histórias e mensagens passam pela aprovação da família antes de aparecer nesta página.</div>
     </form>
   </section>
 
   <section>
-    <h2>Mensagens de saudade</h2>
+    <h2>Histórias e mensagens de saudade</h2>
     <div id="recados"><p class="vazio">Carregando mensagens…</p></div>
   </section>
 </div>
@@ -128,6 +137,35 @@ const SUPABASE_URL = "https://ckbvqzfzwglybxyygpof.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_QOmw-zfH6YTxA5TqDIrifA_9TPDhe8o";
 const PESSOA = "pedrinho-franco";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const ALBUNS = ['Todos','Geral','Amigos','Família','Eu','Viagens'];
+let albumAtual = 'Todos';
+let fotosGaleria = Array.from(document.querySelectorAll('#c-grid img')).map(img=>({url:img.src,alt:img.alt}));
+let albunsFotos = {};
+let videosGaleria = [{url:document.querySelector('#c-video source').src,poster:document.getElementById('c-video').poster}];
+let albunsVideos = {};
+function escolherAlbum(album){
+  if(!ALBUNS.includes(album)){ return; }
+  albumAtual = album;
+  const barra = document.getElementById('albuns');
+  barra.replaceChildren();
+  ALBUNS.forEach(a=>{
+    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = a;
+    btn.setAttribute('aria-pressed',String(a === albumAtual));
+    btn.onclick = ()=>escolherAlbum(a); barra.appendChild(btn);
+  });
+  const fotos = fotosGaleria.filter(f=>album === 'Todos' || (albunsFotos[f.url] || 'Geral') === album);
+  const grid = document.getElementById('c-grid'); grid.replaceChildren();
+  fotos.forEach(f=>{ const img=document.createElement('img'); img.src=f.url; img.alt=f.alt; img.loading='lazy'; grid.appendChild(img); });
+  let videos = document.getElementById('c-videos');
+  if(!videos){ videos=document.createElement('div'); videos.id='c-videos'; document.getElementById('c-video').replaceWith(videos); }
+  videos.replaceChildren();
+  const selecionados=videosGaleria.filter(v=>album === 'Todos' || (albunsVideos[v.url] || 'Geral') === album);
+  selecionados.forEach(item=>{const v=document.createElement('video');v.controls=true;v.preload='metadata';v.src=item.url;if(item.poster)v.poster=item.poster;videos.appendChild(v);});
+  document.getElementById('album-vazio').textContent='Este álbum ainda não tem fotos ou vídeos.';
+  document.getElementById('album-vazio').hidden = fotos.length + selecionados.length > 0;
+  document.getElementById('historia-album').value = album === 'Todos' ? '' : album;
+}
+escolherAlbum('Todos');
 
 function fmtData(iso){
   try{ return new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}); }
@@ -151,7 +189,9 @@ async function acenderVela(){
   document.getElementById('vela').classList.add('acesa');
   if(!error){ btn.textContent = "Vela acesa 🕯️"; }
   else { btn.textContent = "Vela acesa 🕯️"; }
-  
+
+}
+
 async function carregarConteudo(){
   try{
     const {data, error} = await sb.from('conteudo').select('dados').eq('pessoa',PESSOA).maybeSingle();
@@ -166,17 +206,17 @@ async function carregarConteudo(){
       document.getElementById('c-historia').innerHTML = '<h2>Sua história</h2>' + paras.map(p=>'<p>'+esc(p)+'</p>').join('');
     }
     if(c.foto_hero){ document.getElementById('hero-img').src = c.foto_hero; }
-    if(Array.isArray(c.fotos) && c.fotos.length){
-      document.getElementById('c-grid').innerHTML = c.fotos.map(u=>'<img src="'+u+'" alt="Foto de '+(c.apelido||c.nome||'')+'">').join('');
+    if(Array.isArray(c.fotos)){
+      fotosGaleria = c.fotos.map(url=>({url,alt:'Foto de '+(c.apelido||c.nome||'')}));
+      albunsFotos = c.foto_albuns || {};
+      escolherAlbum(albumAtual);
     }
-    const v = document.getElementById('c-video');
-    if(c.video){ v.querySelector('source').src = c.video; v.load(); }
-    if(c.poster){ v.poster = c.poster; }
+    videosGaleria = Array.from(new Set([...(c.videos || []), ...(c.video ? [c.video] : [])])).map(url=>({url,poster:c.poster||''}));
+    albunsVideos = c.video_albuns || {};
+    escolherAlbum(albumAtual);
   }catch(e){ /* mantem conteudo estatico */ }
 }
 carregarConteudo();
-carregarVelas();
-}
 
 async function carregarRecados(){
   const {data, error} = await sb.from('recados').select('nome,mensagem,created_at')
@@ -195,11 +235,13 @@ async function enviarRecado(ev){
   ev.preventDefault();
   if(document.getElementById('hp').value){ return; }
   const nome = document.getElementById('nome').value.trim();
-  const mensagem = document.getElementById('mensagem').value.trim();
-  if(!nome || !mensagem){ return; }
+  const texto = document.getElementById('mensagem').value.trim();
+  const album = document.getElementById('historia-album').value;
+  const mensagem = album ? '[Álbum: ' + album + ']\n' + texto : texto;
+  if(!nome || !texto){ return; }
   const btn = document.getElementById('btn-recado');
   btn.disabled = true; btn.textContent = "Enviando…";
-  const {error} = await sb.from('recados').insert({pessoa:PESSOA, nome:nome, mensagem:mensagem});
+  const {error} = await sb.from('recados').insert({pessoa:PESSOA, nome:nome, mensagem:mensagem, aprovado:false});
   if(error){
     btn.disabled = false; btn.textContent = "Enviar mensagem";
     alert("Não foi possível enviar agora. Tente novamente em alguns instantes.");
