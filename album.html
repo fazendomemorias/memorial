@@ -38,7 +38,7 @@
 
 <div class="wrap">
   <section>
-    <p class="vazio" id="vazio" hidden>Este álbum ainda não tem fotos ou vídeos.</p>
+    <p class="vazio" id="vazio" hidden>Ainda não há nada aqui.</p>
     <div class="grid" id="grid"></div>
     <div id="videos"></div>
   </section>
@@ -53,7 +53,7 @@ const SUPABASE_URL = "https://ckbvqzfzwglybxyygpof.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_QOmw-zfH6YTxA5TqDIrifA_9TPDhe8o";
 const PESSOA = "pedrinho-franco";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const ALBUNS = ['Todos','Geral','Amigos','Família','Eu','Viagens'];
+const ALBUNS = ['Todos','Geral','Amigos','Família','Eu','Viagens','Videos'];
 const FOTO_BASE = "https://ckbvqzfzwglybxyygpof.supabase.co/storage/v1/object/public/memorial/";
 let album = new URLSearchParams(location.search).get('album') || 'Todos';
 if(!ALBUNS.includes(album)){ album = 'Todos'; }
@@ -68,13 +68,14 @@ let posterGeral = FOTO_BASE+'foto-cantando.jpg';
 
 function plural(n,s){ return n + ' ' + s + (n===1?'':'s'); }
 function render(){
-  document.getElementById('titulo').textContent = album === 'Todos' ? 'Todas as lembranças' : 'Álbum: ' + album;
-  document.title = (album === 'Todos' ? 'Todas as lembranças' : album) + ' — Pedrinho Franco';
-  const fotos = fotosGaleria.filter(f=>album === 'Todos' || (albunsFotos[f.url] || 'Geral') === album);
-  const videos = videosGaleria.filter(v=>album === 'Todos' || (albunsVideos[v.url] || 'Geral') === album);
+  const isVid = album === 'Videos';
+  const nome = album === 'Todos' ? 'Todas as fotos' : (isVid ? 'Vídeos' : album);
+  document.getElementById('titulo').textContent = isVid ? 'Vídeos' : (album === 'Todos' ? 'Todas as fotos' : 'Álbum: ' + album);
+  document.title = nome + ' — Pedrinho Franco';
+  const fotos = isVid ? [] : fotosGaleria.filter(f=>album === 'Todos' || (albunsFotos[f.url] || 'Geral') === album);
+  const videos = isVid ? videosGaleria : [];
   document.getElementById('conta').textContent =
-    (fotos.length + videos.length === 0) ? '' :
-    plural(fotos.length,'foto') + ' • ' + plural(videos.length,'vídeo');
+    (fotos.length + videos.length === 0) ? '' : (isVid ? plural(videos.length,'vídeo') : plural(fotos.length,'foto'));
   const grid = document.getElementById('grid'); grid.replaceChildren();
   fotos.forEach(f=>{ const img=document.createElement('img'); img.src=f.url; img.alt=f.alt||'Lembrança'; img.loading='lazy'; grid.appendChild(img); });
   const vbox = document.getElementById('videos'); vbox.replaceChildren();
