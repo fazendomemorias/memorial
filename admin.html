@@ -22,7 +22,7 @@
   button.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);width:auto;padding:8px 14px;min-height:0;font-size:.9rem}
   button.ok{background:transparent;color:var(--ok);border:1px solid var(--ok);width:auto;padding:8px 14px;min-height:0;font-size:.9rem}
   button:disabled{opacity:.5}
-  input,textarea{width:100%;background:#100e0c;border:1px solid var(--line);color:var(--text);
+  input,textarea,select{width:100%;background:#100e0c;border:1px solid var(--line);color:var(--text);
     border-radius:10px;padding:12px 14px;font-size:1rem;font-family:inherit;margin-bottom:10px}
   textarea{min-height:110px;resize:vertical}
   label{display:block;color:var(--muted);font-size:.85rem;margin:8px 0 4px}
@@ -46,6 +46,8 @@
   .foto-item .acoes{display:flex;flex-direction:column;gap:6px;margin-left:auto}
   .foto-item .tag{font-size:.75rem;color:var(--gold)}
   .file-row{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .foto-item select{padding:6px;font-size:.85rem;margin:0}
+  @media(max-width:420px){.foto-item{flex-wrap:wrap}.foto-item .acoes{flex-direction:row;width:100%;margin:4px 0 0}.foto-item .acoes button{flex:1}}
   a.link{color:var(--gold2);font-size:.85rem}
   .topo-btn{width:auto;padding:8px 14px;min-height:0;font-size:.85rem;background:transparent;
     color:var(--muted);border:1px solid var(--line)}
@@ -129,21 +131,27 @@
       <h2>Fotos</h2>
       <div id="lista-fotos"><p class="vazio">Carregando…</p></div>
       <div class="file-row">
-        <label for="nova-foto">Adicionar foto (escolhe no celular ou tira na hora)</label>
-        <input type="file" id="nova-foto" accept="image/*">
-        <button class="sec" style="width:100%" onclick="enviarFoto()">Enviar foto</button>
+        <label for="nova-foto">Adicionar fotos (selecione uma ou várias de uma vez)</label>
+        <label for="album-envio">Álbum destas fotos</label>
+        <select id="album-envio"><option>Geral</option><option>Amigos</option><option>Família</option><option>Eu</option><option>Viagens</option></select>
+        <input type="file" id="nova-foto" accept="image/*" multiple onchange="selecionarFotos()" aria-describedby="fotos-selecao">
+        <p class="aviso" id="fotos-selecao" role="status" aria-live="polite">Nenhuma foto selecionada.</p>
+        <button id="btn-enviar-fotos" class="sec" style="width:100%" onclick="enviarFoto()">Enviar fotos</button>
+        <p class="aviso" id="fotos-progresso" role="status" aria-live="polite"></p>
       </div>
       <div class="msg-ok" id="foto-ok"></div>
       <div class="msg-erro" id="foto-erro"></div>
     </section>
 
     <section class="card">
-      <h2>Vídeo</h2>
-      <video id="video-atual" controls style="width:100%;border-radius:10px;background:#000"></video>
+      <h2>Vídeos</h2>
+      <div id="lista-videos"></div>
       <div class="file-row">
-        <label for="novo-video">Trocar vídeo (arquivos grandes demoram)</label>
-        <input type="file" id="novo-video" accept="video/*">
-        <button class="sec" style="width:100%" onclick="enviarVideo()">Enviar novo vídeo</button>
+        <label for="album-video">Álbum destes vídeos</label><select id="album-video"><option>Geral</option><option>Amigos</option><option>Família</option><option>Eu</option><option>Viagens</option></select>
+        <label for="novo-video">Adicionar vídeos (arquivos grandes demoram; os anteriores continuam)</label>
+        <input type="file" id="novo-video" accept="video/*" multiple onchange="selecionarVideos()" aria-describedby="videos-selecao">
+        <p class="aviso" id="videos-selecao" role="status" aria-live="polite">Nenhum vídeo selecionado.</p>
+        <button id="btn-enviar-videos" class="sec" style="width:100%" onclick="enviarVideo()">Enviar vídeos</button><p class="aviso" id="videos-progresso" role="status" aria-live="polite"></p>
       </div>
       <div class="msg-ok" id="video-ok"></div>
       <div class="msg-erro" id="video-erro"></div>
@@ -159,6 +167,11 @@ const PESSOA = "pedrinho-franco";
 const DONO_UID = "03677158-15a1-493b-887a-64acd183e0a7";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let conteudo = null;
+const ALBUNS = ['Geral','Amigos','Família','Eu','Viagens'];
+let fotosPendentes = [];
+let enviandoFotos = false;
+let videosPendentes = [];
+let enviandoVideos = false;
 
 function mostra(id){ document.getElementById(id).classList.remove('hidden'); }
 function esconde(id){ document.getElementById(id).classList.add('hidden'); }
@@ -266,17 +279,26 @@ async function carregarConteudo(){
   document.getElementById('f-falec').value = conteudo.falecimento || '';
   document.getElementById('f-frase').value = conteudo.frase || '';
   document.getElementById('f-historia').value = conteudo.historia || '';
-  if(conteudo.video){ document.getElementById('video-atual').src = conteudo.video; }
+  renderVideos();
   renderFotos();
 }
 function renderFotos(){
   const fotos = (conteudo && conteudo.fotos) || [];
   document.getElementById('lista-fotos').innerHTML = fotos.length ? fotos.map((u,i)=>
     '<div class="foto-item"><img src="'+u+'">'+
-    '<div>'+(u===conteudo.foto_hero ? '<span class="tag">Foto principal</span>' : '')+'</div>'+
+    '<div style="flex:1;min-width:0">'+(u===conteudo.foto_hero ? '<span class="tag">Foto principal</span>' : '')+
+    '<label for="album-foto-'+i+'">Álbum</label><select id="album-foto-'+i+'" onchange="mudarAlbum('+i+',this.value)">'+ALBUNS.map(a=>'<option'+(a===((conteudo.foto_albuns||{})[u]||'Geral')?' selected':'')+'>'+a+'</option>').join('')+'</select></div>'+
     '<div class="acoes">'+(u!==conteudo.foto_hero ? '<button class="sec" onclick="definirPrincipal('+i+')">Tornar principal</button>' : '')+
     '<button class="danger" onclick="removerFoto('+i+')">Remover</button></div></div>').join('')
     : '<p class="vazio">Nenhuma foto.</p>';
+}
+async function mudarAlbum(i, album){
+  if(!ALBUNS.includes(album) || !conteudo){ return; }
+  const antigo = conteudo.foto_albuns;
+  conteudo.foto_albuns = {...(antigo || {}), [conteudo.fotos[i]]:album};
+  const error = await salvarConteudo();
+  if(error){ conteudo.foto_albuns = antigo; renderFotos(); erro('foto-erro','Não consegui mudar o álbum. Tente de novo.'); return; }
+  ok('foto-ok','Álbum atualizado.');
 }
 async function salvarConteudo(){
   const {error} = await sb.from('conteudo').upsert({pessoa:PESSOA, dados:conteudo, updated_at:new Date().toISOString()});
@@ -309,38 +331,152 @@ async function removerFoto(i){
   if(error){ erro('foto-erro', 'Não consegui salvar.'); return; }
   renderFotos(); ok('foto-ok','Foto removida da página.');
 }
+function selecionarFotos(){
+  fotosPendentes = Array.from(document.getElementById('nova-foto').files).map(arquivo=>({arquivo}));
+  atualizarSelecaoFotos();
+  document.getElementById('foto-ok').style.display = 'none';
+  document.getElementById('foto-erro').style.display = 'none';
+  document.getElementById('fotos-progresso').textContent = '';
+}
+function atualizarSelecaoFotos(){
+  const n = fotosPendentes.length;
+  document.getElementById('fotos-selecao').textContent = n ?
+    n + (n === 1 ? ' foto selecionada: ' : ' fotos selecionadas: ') +
+    fotosPendentes.map(item=>item.arquivo.name).join(', ') : 'Nenhuma foto selecionada.';
+  document.getElementById('btn-enviar-fotos').textContent = 'Enviar fotos';
+}
 async function enviarFoto(){
-  const f = document.getElementById('nova-foto').files[0];
-  if(!f){ erro('foto-erro','Escolha uma foto primeiro.'); return; }
-  document.getElementById('foto-erro').style.display='none';
-  const nome = 'foto-' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9.\-]/g,'_');
-  const {error} = await sb.storage.from('memorial').upload(nome, f, {cacheControl:'3600', upsert:false});
-  if(error){ erro('foto-erro','Não consegui enviar. Tente de novo.'); return; }
-  const url = SUPABASE_URL + '/storage/v1/object/public/memorial/' + nome;
-  conteudo.fotos = conteudo.fotos || [];
-  conteudo.fotos.push(url);
-  const e2 = await salvarConteudo();
-  if(e2){ erro('foto-erro','Foto enviada, mas não entrou na página. Tente de novo.'); return; }
-  document.getElementById('nova-foto').value = '';
-  renderFotos(); ok('foto-ok','Foto adicionada à página.');
+  if(enviandoFotos){ return; }
+  if(!fotosPendentes.length){ erro('foto-erro','Escolha uma ou mais fotos primeiro.'); return; }
+  if(!conteudo){ erro('foto-erro','Aguarde o conteúdo carregar e tente de novo.'); return; }
+  enviandoFotos = true;
+  const controles = Array.from(document.querySelectorAll('#painel button, #painel input, #painel textarea, #painel select, #btn-sair'));
+  const estados = controles.map(el=>el.disabled);
+  controles.forEach(el=>el.disabled = true);
+  document.getElementById('foto-erro').style.display = 'none';
+  document.getElementById('foto-ok').style.display = 'none';
+  const progresso = document.getElementById('fotos-progresso');
+  const lote = fotosPendentes.slice();
+  const album = document.getElementById('album-envio').value;
+  const falhas = [];
+  let adicionadas = 0;
+  try {
+    for(let i=0; i<lote.length; i++){
+      const item = lote[i], f = item.arquivo;
+      progresso.textContent = 'Enviando foto ' + (i+1) + ' de ' + lote.length + '. Aguarde e mantenha esta página aberta.';
+      try {
+        if(f.type && !f.type.startsWith('image/')){ throw new Error('arquivo-invalido'); }
+        if(!item.url){
+          const nome = 'foto-' + Date.now() + '-' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) + '-' + f.name.replace(/[^a-zA-Z0-9.\-]/g,'_');
+          const {error} = await sb.storage.from('memorial').upload(nome, f, {cacheControl:'3600', upsert:false});
+          if(error){ throw error; }
+          item.url = SUPABASE_URL + '/storage/v1/object/public/memorial/' + nome;
+        }
+        // Só inclui na lista local depois que a página foi salva.
+        const dados = {...conteudo, fotos:[...(conteudo.fotos || []), item.url], foto_albuns:{...(conteudo.foto_albuns || {}), [item.url]:item.album || album}};
+        item.album = item.album || album;
+        const {error} = await sb.from('conteudo').upsert({pessoa:PESSOA, dados, updated_at:new Date().toISOString()});
+        if(error){ throw error; }
+        conteudo = dados;
+        adicionadas++;
+      } catch(error){ falhas.push(item); }
+    }
+  } finally {
+    fotosPendentes = falhas;
+    document.getElementById('nova-foto').value = '';
+    controles.forEach((el,i)=>el.disabled = estados[i]);
+    enviandoFotos = false;
+    renderFotos();
+    atualizarSelecaoFotos();
+    progresso.textContent = adicionadas + (adicionadas === 1 ? ' foto adicionada' : ' fotos adicionadas') + ' de ' + lote.length + '.';
+    if(adicionadas){ ok('foto-ok', adicionadas === 1 ? 'Foto adicionada à página.' : 'Fotos adicionadas à página.'); }
+    if(falhas.length){
+      erro('foto-erro', 'Não consegui concluir: ' + falhas.map(item=>item.arquivo.name).join(', ') + '. Toque em "Tentar novamente" para repetir só estas fotos, sem duplicar as que já entraram. Não feche a página antes de tentar.');
+      document.getElementById('btn-enviar-fotos').textContent = 'Tentar novamente';
+    }
+  }
+}
+function videosDoConteudo(){
+  return Array.from(new Set([...(conteudo.videos || []), ...(conteudo.video ? [conteudo.video] : [])]));
+}
+function renderVideos(){
+  const box = document.getElementById('lista-videos'); box.replaceChildren();
+  videosDoConteudo().forEach((url,i)=>{
+    const wrap=document.createElement('div'); wrap.style.marginBottom='18px';
+    const v=document.createElement('video'); v.src=url; v.controls=true; v.preload='metadata'; v.style.cssText='width:100%;border-radius:10px;background:#000'; wrap.appendChild(v);
+    const label=document.createElement('label'); label.htmlFor='album-video-'+i; label.textContent='Álbum do vídeo '+(i+1);wrap.appendChild(label);
+    const select=document.createElement('select'); select.id='album-video-'+i;
+    ALBUNS.forEach(a=>{const o=document.createElement('option');o.textContent=a;select.appendChild(o);});
+    select.value=(conteudo.video_albuns||{})[url]||'Geral';
+    select.onchange=async()=>{ const antigo=conteudo.video_albuns; conteudo.video_albuns={...(antigo||{}),[url]:select.value}; const error=await salvarConteudo(); if(error){conteudo.video_albuns=antigo;renderVideos();erro('video-erro','Não consegui mudar o álbum.');}else{ok('video-ok','Álbum atualizado.');} };
+    wrap.appendChild(select);box.appendChild(wrap);
+  });
+}
+function selecionarVideos(){
+  videosPendentes = Array.from(document.getElementById('novo-video').files).map(arquivo=>({arquivo}));
+  atualizarSelecaoVideos();
+  document.getElementById('video-ok').style.display = 'none';
+  document.getElementById('video-erro').style.display = 'none';
+  document.getElementById('videos-progresso').textContent = '';
+}
+function atualizarSelecaoVideos(){
+  const n = videosPendentes.length;
+  document.getElementById('videos-selecao').textContent = n ?
+    n + (n === 1 ? ' vídeo selecionado: ' : ' vídeos selecionados: ') +
+    videosPendentes.map(item=>item.arquivo.name).join(', ') : 'Nenhum vídeo selecionado.';
+  document.getElementById('btn-enviar-videos').textContent = 'Enviar vídeos';
 }
 async function enviarVideo(){
-  const f = document.getElementById('novo-video').files[0];
-  if(!f){ erro('video-erro','Escolha um vídeo primeiro.'); return; }
-  document.getElementById('video-erro').style.display='none';
-  ok('video-ok','Enviando… pode demorar um pouco.');
-  const nome = 'video-' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9.\-]/g,'_');
-  const {error} = await sb.storage.from('memorial').upload(nome, f, {cacheControl:'3600', upsert:false});
-  if(error){ erro('video-erro','Não consegui enviar. Tente de novo.'); return; }
-  const url = SUPABASE_URL + '/storage/v1/object/public/memorial/' + nome;
-  conteudo.video = url;
-  const e2 = await salvarConteudo();
-  if(e2){ erro('video-erro','Vídeo enviado, mas não entrou na página. Tente de novo.'); return; }
-  document.getElementById('novo-video').value = '';
-  document.getElementById('video-atual').src = url;
-  ok('video-ok','Vídeo atualizado na página.');
+  if(enviandoVideos){ return; }
+  if(!videosPendentes.length){ erro('video-erro','Escolha um ou mais vídeos primeiro.'); return; }
+  if(!conteudo){ erro('video-erro','Aguarde o conteúdo carregar e tente de novo.'); return; }
+  enviandoVideos = true;
+  const controles = Array.from(document.querySelectorAll('#painel button, #painel input, #painel textarea, #painel select, #btn-sair'));
+  const estados = controles.map(el=>el.disabled);
+  controles.forEach(el=>el.disabled = true);
+  document.getElementById('video-erro').style.display = 'none';
+  document.getElementById('video-ok').style.display = 'none';
+  const progresso = document.getElementById('videos-progresso');
+  const lote = videosPendentes.slice();
+  const album = document.getElementById('album-video').value;
+  const falhas = [];
+  let adicionados = 0;
+  try {
+    for(let i=0; i<lote.length; i++){
+      const item = lote[i], f = item.arquivo;
+      progresso.textContent = 'Enviando vídeo ' + (i+1) + ' de ' + lote.length + '. Aguarde e mantenha esta página aberta.';
+      try {
+        if(f.type && !f.type.startsWith('video/')){ throw new Error('arquivo-invalido'); }
+        if(!item.url){
+          const nome = 'video-' + Date.now() + '-' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) + '-' + f.name.replace(/[^a-zA-Z0-9.\-]/g,'_');
+          const {error} = await sb.storage.from('memorial').upload(nome, f, {cacheControl:'3600', upsert:false});
+          if(error){ throw error; }
+          item.url = SUPABASE_URL + '/storage/v1/object/public/memorial/' + nome;
+        }
+        // Só inclui na lista local depois que a página foi salva.
+        const dados = {...conteudo, videos:[...videosDoConteudo(), item.url], video_albuns:{...(conteudo.video_albuns || {}), [item.url]:item.album || album}};
+        item.album = item.album || album;
+        const {error} = await sb.from('conteudo').upsert({pessoa:PESSOA, dados, updated_at:new Date().toISOString()});
+        if(error){ throw error; }
+        conteudo = dados;
+        adicionados++;
+      } catch(error){ falhas.push(item); }
+    }
+  } finally {
+    videosPendentes = falhas;
+    document.getElementById('novo-video').value = '';
+    controles.forEach((el,i)=>el.disabled = estados[i]);
+    enviandoVideos = false;
+    renderVideos();
+    atualizarSelecaoVideos();
+    progresso.textContent = adicionados + (adicionados === 1 ? ' vídeo adicionado' : ' vídeos adicionados') + ' de ' + lote.length + '.';
+    if(adicionados){ ok('video-ok', adicionados === 1 ? 'Foto adicionado à página.' : 'Fotos adicionados à página.'); }
+    if(falhas.length){
+      erro('video-erro', 'Não consegui concluir: ' + falhas.map(item=>item.arquivo.name).join(', ') + '. Toque em "Tentar novamente" para repetir só estes vídeos, sem duplicar os que já entraram. Não feche a página antes de tentar.');
+      document.getElementById('btn-enviar-videos').textContent = 'Tentar novamente';
+    }
+  }
 }
-
 /* ---------- ENTRADA ---------- */
 (async function(){
   // chegada pelo link de redefinicao de senha do e-mail
